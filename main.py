@@ -23,10 +23,12 @@ c = conn.cursor()
 
 # Check to see if tables have been created already or not
 # Creating the SQLite table 'Ingredients'
-c.execute("CREATE TABLE IF NOT EXISTS ingredients (ingredientName TEXT PRIMARY KEY)")
+create_table_query = "CREATE TABLE IF NOT EXISTS ingredients (ingredientName TEXT PRIMARY KEY)"
+execute_db_query(create_table_query)
 
 # Creating the SQLite table 'Recipes'
-c.execute("CREATE TABLE IF NOT EXISTS recipes (recipeName TEXT PRIMARY KEY)")
+create_table_query = "CREATE TABLE IF NOT EXISTS recipes (recipeName TEXT PRIMARY KEY)"
+execute_db_query(create_table_query)
 
 # Creating the SQLite table 'Recipe_Contains'
 create_table_query = (
@@ -42,7 +44,15 @@ c.execute(create_table_query)
 
 conn.commit()
 
-# Start command line interpreter
+def execute_db_query(q):
+    try:
+        c.execute(q)
+        conn.commit()
+    except sqlite3.Error as er:
+        print('er:', er)
+        print("If error is 'UNIQUE constraint failed', you may ignore")
+
+# == Start command line interpreter
 class entry_prompt(Cmd):
     def do_addRecipe(self, args):
         """
@@ -55,16 +65,48 @@ class entry_prompt(Cmd):
         else: 
             print("Adding %s to your recipe book." % args)
             print("Input ingredients line by line here. Enter STOP to terminate.")
+
+            # Ingredients are read from user input line by line, and temporarily stored
+            # in a set. After program is done reading from user input, program adds ingredients
+            # to the 'recipe_contains' table.
             inpt = ""
+            ingredients = set()
+
+            # == Read from user input
             while(True):
                 inpt = input(">> ").strip().lower()
                 if (inpt != "stop"):
-                    # add ingredient to recipe
                     print("YAY~")
+                    ingredients.add(inpt)
                 else:
                     print("%s was added to your recipe book." % args)
                     break
-            print("")
+
+            # == Push recipe to database
+            # add recipe to 'recipes' table
+            add_recipe_query = "INSERT INTO recipes (recipeName) VALUES ('{fargs}')"\
+                               .format(fargs=args)
+            try:
+                c.execute(add_recipe_query)
+                conn.commit()
+            except sqlite3.Error as er:
+                    print('er:', er)
+                    print("If error is 'UNIQUE constraint failed', you may ignore")
+            
+            for entry in ingredients:
+
+                # add ingredients to 'ingredients' table.
+                add_ingredient_query = "INSERT INTO ingredients (ingredientName) VALUES ('{ingr}')"\
+                                       .format(ingr=entry)
+                print(add_ingredient_query)
+                try:
+                    c.execute(add_ingredient_query)
+                    conn.commit()
+                except sqlite3.Error as er:
+                    print('er:', er)
+                    print("If error is 'UNIQUE constraint failed', you may ignore")
+
+                
 
     def do_quit(self, args):
         """Quits the program."""
