@@ -30,8 +30,20 @@ def execute_db_query(q):
         c.execute(q)
         conn.commit()
     except sqlite3.Error as er:
-        print('er:', er)
+        print('THE DATABASE SAYS --> er:', er)
         print("If error is 'UNIQUE constraint failed', you may ignore")
+
+'''
+This is a helper method to print out results from SQL queries
+'''
+def print_results(query):
+    c.execute(query)
+    rows = c.fetchall()
+    for entry in rows:
+        for entry2 in entry:
+            str = '{0: <20}'.format(entry2)
+            print(str, end='')
+        print('')
 
 
 class EntryPrompt(Cmd):
@@ -41,7 +53,7 @@ class EntryPrompt(Cmd):
         print("Quitting.")
         raise SystemExit
 
-    def do_addrecipe(self, args):
+    def do_add_recipe(self, args):
         """
         Add a recipe to your recipe book!
         This method only takes one argument initially, and that is the recipe name.
@@ -50,6 +62,7 @@ class EntryPrompt(Cmd):
         if len(args) == 0:
             print("ERROR: No recipe name was specified")
         else:
+            args = args.strip().lower()
             print("Adding %s to your recipe book." % args)
             print("Input ingredients line by line here. Enter STOP to terminate.")
 
@@ -76,17 +89,73 @@ class EntryPrompt(Cmd):
 
             # add ingredients to 'ingredients' table and 'recipe_contains' table.
             for entry in ingredients:
-                add_ingredient_query = "INSERT INTO ingredients (ingredientName) VALUES ('{ingr}')" \
-                    .format(ingr=entry)
-                execute_db_query(add_ingredient_query)
                 add_ingredient_query = "INSERT INTO recipe_contains (recipeName, ingredientName) VALUES ('{rn}', '{ingr}')" \
                     .format(rn=args, ingr=entry)
                 execute_db_query(add_ingredient_query)
+                add_ingredient_query = "INSERT INTO ingredients (ingredientName) VALUES ('{ingr}')" \
+                    .format(ingr=entry)
+                execute_db_query(add_ingredient_query)
 
-    def do_ingredients_usage(self):
+    def do_delete_recipe(self, args):
+        """
+        Delete a recipe to your recipe book!
+        This method only takes one argument, and that is the recipe name.
+        Spaces are allowed.
+        """
+        if len(args) == 0:
+            print("ERROR: No recipe name was specified")
+        else:
+            args = args.strip().lower()
+            print("Deleting %s from your recipe book." % args)
+            # Delete recipe from the table 'recipes'
+            query = """
+            DELETE FROM recipes
+            WHERE recipeName = '{}'
+            """.format(args)
+            execute_db_query(query)
+            # TODO: Delete ingredient entries from the table 'ingredients' if there are no more references to it
+
+    def do_view(self, args):
+        """
+        View the ingredients of a specified recipe.
+        This method only takes one argument, and that is the recipe name.
+        Spaces are allowed.
+        """
+        if len(args) == 0:
+            print("ERROR: No recipe name was specified")
+        else:
+            args = args.strip().lower()
+            # Print ingredients of recipe
+            query = """
+            SELECT ingredientName FROM recipe_contains
+            WHERE recipeName = '{}'
+            ORDER BY ingredientName
+            """.format(args)
+            print_results(query)
+
+    def do_list_recipes(self,args):
+        """
+        List all recipes in your catalog.
+        """
+        query = """
+        SELECT * FROM recipes
+        ORDER BY recipeName
+        """
+        print_results(query)
+
+    def do_list_ingredients(self,args):
         """
         Get a list of all the ingredients used by all of the recipes in your catalog, ordered from most used to least used.
         """
+        get_ingredients_query = """
+        SELECT ingredientName, count(ingredientName) 
+        FROM recipe_contains
+        GROUP BY ingredientName
+        ORDER BY count(ingredientName) DESC;
+        """
+        header = '{0: <20}{1: <20}'.format("Ingredient", "Number of recipes that use this")
+        print(header)
+        print_results(get_ingredients_query)
 
 
 ######################## ENTRY POINT ########################
@@ -107,7 +176,7 @@ create_table_query = (
     "ingredientName TEXT, "
     "PRIMARY KEY (recipeName, ingredientName), "
     "   FOREIGN KEY (ingredientName) REFERENCES ingredients(ingredientName), "
-    "   FOREIGN KEY (recipeName) REFERENCES recipes(recipeName)"
+    "   FOREIGN KEY (recipeName) REFERENCES recipes(recipeName) ON DELETE CASCADE"
     ")"
 )
 execute_db_query(create_table_query)
@@ -115,7 +184,7 @@ execute_db_query(create_table_query)
 # == Start command line interpreter
 if __name__ == "__main__":
     prompt = EntryPrompt()
-    prompt.prompt = "> "
-    prompt.cmdloop("Starting prompt...")
+    prompt.prompt = "🍉 "
+    prompt.cmdloop("Starting Grocery Optimiser, type 'help' for available commands...")
 
 conn.close()
