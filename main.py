@@ -39,6 +39,10 @@ This is a helper method to print out results from SQL queries
 def print_results(query):
     c.execute(query)
     rows = c.fetchall()
+    if (len(rows) == 0):
+        print("NO RESULTS FOUND. What you are looking for does not exist")
+        return
+
     for entry in rows:
         for entry2 in entry:
             str = '{0: <20}'.format(entry2)
@@ -106,7 +110,7 @@ class EntryPrompt(Cmd):
             print("ERROR: No recipe name was specified")
         else:
             args = args.strip().lower()
-            print("Deleting %s from your recipe book." % args)
+            print("Deleting %s from your recipe book (if it exists)." % args)
             # Delete recipe from the table 'recipes'
             query = """
             DELETE FROM recipes
@@ -132,6 +136,32 @@ class EntryPrompt(Cmd):
             ORDER BY ingredientName
             """.format(args)
             print_results(query)
+
+    def do_recipes_using(self,args):
+        """
+        View the recipes that use ALL the specified ingredient(s).
+        This method takes unlimited comma-separated arguments.
+        """
+        if len(args) == 0:
+            print("ERROR: No ingredients were specified")
+        else:
+            args = args.strip().lower().split(',')
+            query = """
+            SELECT DISTINCT recipeName FROM recipe_contains
+            WHERE 
+            """
+            # build query string containing all ingredients
+            numIngredients = len(args)
+            str = ""
+            count = 0
+            for entry in args:
+                count = count + 1
+                str = str + "ingredientName = '{}'".format(entry)
+                if (count < numIngredients):
+                    str = str + " OR "
+            query = query + str
+            print_results(query)
+
 
     def do_list_recipes(self,args):
         """
