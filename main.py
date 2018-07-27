@@ -36,9 +36,7 @@ def execute_db_query(q):
 '''
 This is a helper method to print out results from SQL queries
 '''
-def print_results(query):
-    c.execute(query)
-    conn.commit()
+def print_results():
     rows = c.fetchall()
     if (len(rows) == 0):
         print("NO RESULTS FOUND. What you are looking for does not exist")
@@ -139,7 +137,8 @@ class EntryPrompt(Cmd):
             WHERE recipeName = '{}'
             ORDER BY ingredientName
             """.format(args)
-            print_results(query)
+            execute_db_query(query)
+            print_results()
 
     def do_recipes_using(self,args):
         """
@@ -175,7 +174,8 @@ class EntryPrompt(Cmd):
             HAVING count(*) = {}
             """.format(len(args))
 
-            print_results(query)
+            execute_db_query(query)
+            print_results()
 
             # delete temporary table
             delete_query = """
@@ -193,7 +193,8 @@ class EntryPrompt(Cmd):
         SELECT * FROM recipes
         ORDER BY recipeName
         """
-        print_results(query)
+        execute_db_query(query)
+        print_results()
 
     def do_list_ingredients(self,args):
         """
@@ -207,7 +208,8 @@ class EntryPrompt(Cmd):
         """
         header = '{0: <20}{1: <20}'.format("Ingredient", "Number of recipes that use this")
         print(header)
-        print_results(get_ingredients_query)
+        execute_db_query(get_ingredients_query)
+        print_results()
 
 
 ######################## ENTRY POINT ########################
