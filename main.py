@@ -154,7 +154,8 @@ class EntryPrompt(Cmd):
             # build temporary table containing all ingredients to search for
             temp_query = """
             CREATE TEMP TABLE t (
-                ingredientName TEXT
+                ingredientName TEXT,
+                PRIMARY KEY (ingredientName)
             ) 
             """
             execute_db_query(temp_query)
@@ -164,19 +165,23 @@ class EntryPrompt(Cmd):
                 execute_db_query(temp_query)
 
             # This query will count how many of the specified ingredients are in each recipe.
+            # It will filter out any recipe that does not use all ingredients
 
             query = """
-            SELECT r.recipeName, count(*) 
+            SELECT r.recipeName 
             FROM recipe_contains r
             INNER JOIN t ON t.ingredientName = r.ingredientName
             GROUP BY r.recipeName
-            """
+            HAVING count(*) = {}
+            """.format(len(args))
 
-            # If a recipe does not contain all specified ingredients, CHUCK IT!
-            query2 = """
-            SELECT
-            """
             print_results(query)
+
+            # delete temporary table
+            delete_query = """
+            DROP TABLE t;
+            """
+            execute_db_query(delete_query)
 
 
 
