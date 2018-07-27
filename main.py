@@ -38,6 +38,7 @@ This is a helper method to print out results from SQL queries
 '''
 def print_results(query):
     c.execute(query)
+    conn.commit()
     rows = c.fetchall()
     if (len(rows) == 0):
         print("NO RESULTS FOUND. What you are looking for does not exist")
@@ -111,12 +112,14 @@ class EntryPrompt(Cmd):
         else:
             args = args.strip().lower()
             print("Deleting %s from your recipe book (if it exists)." % args)
+
             # Delete recipe from the table 'recipes'
             query = """
             DELETE FROM recipes
             WHERE recipeName = '{}'
             """.format(args)
             execute_db_query(query)
+
             # TODO: Delete ingredient entries from the table 'ingredients' if there are no more references to it
 
     def do_view(self, args):
@@ -129,6 +132,7 @@ class EntryPrompt(Cmd):
             print("ERROR: No recipe name was specified")
         else:
             args = args.strip().lower()
+
             # Print ingredients of recipe
             query = """
             SELECT ingredientName FROM recipe_contains
@@ -146,21 +150,34 @@ class EntryPrompt(Cmd):
             print("ERROR: No ingredients were specified")
         else:
             args = args.strip().lower().split(',')
-            query = """
-            SELECT DISTINCT recipeName FROM recipe_contains
-            WHERE 
+
+            # build temporary table containing all ingredients to search for
+            temp_query = """
+            CREATE TEMP TABLE t (
+                ingredientName TEXT
+            ) 
             """
-            # build query string containing all ingredients
-            numIngredients = len(args)
-            str = ""
-            count = 0
-            for entry in args:
-                count = count + 1
-                str = str + "ingredientName = '{}'".format(entry)
-                if (count < numIngredients):
-                    str = str + " OR "
-            query = query + str
+            execute_db_query(temp_query)
+            for item in args:
+                item = item.strip()
+                temp_query = "INSERT INTO t (ingredientName) VALUES ('{}')".format(item)
+                execute_db_query(temp_query)
+
+            # This query will count how many of the specified ingredients are in each recipe.
+
+            query = """
+            SELECT r.recipeName, count(*) 
+            FROM recipe_contains r
+            INNER JOIN t ON t.ingredientName = r.ingredientName
+            GROUP BY r.recipeName
+            """
+
+            # If a recipe does not contain all specified ingredients, CHUCK IT!
+            query2 = """
+            SELECT
+            """
             print_results(query)
+
 
 
     def do_list_recipes(self,args):
